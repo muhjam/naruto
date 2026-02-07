@@ -34,8 +34,8 @@ def main():
     jutsu_list = {
         '1': {'name': 'Rasengan', 'sequence': ['ram', 'horse'], 'duration': None}, 
         '2': {'name': 'Chidori', 'sequence': ['dog', 'ram'], 'duration': None}, 
-        '3': {'name': 'Fire Ball', 'sequence': ['horse', 'dog'], 'duration': None}, 
-        '4': {'name': 'Sharingan', 'sequence': ['dog', 'horse', 'ram'], 'duration': None}
+        '3': {'name': 'Fire Ball', 'sequence': ['dog', 'horse'], 'duration': None}, 
+        '4': {'name': 'Sharingan', 'sequence': ['ram'], 'duration': None}
     }
     
     active_jutsu = None
@@ -45,6 +45,7 @@ def main():
     seal_hold_frames = 0
     REQUIRED_HOLD = 1 
     mirror_view = True # Default mirror aktif
+    seal_cooldown = 0 # Jeda antar segel
 
     print("--- Naruto Vision Started ---")
     print("Press 1-4: Select Jutsu")
@@ -70,8 +71,9 @@ def main():
         
         # DEBUG: Tampilkan status di layar
         mirror_status = "ON" if mirror_view else "OFF"
-        debug_text = f"Detected: {detected_seal} | Hands: {len(hands_info)} | Mirror: {mirror_status}"
-        cv2.putText(img, debug_text, (img.shape[1]-450, img.shape[0]-40), 
+        cooldown_status = f" | CD: {seal_cooldown}" if seal_cooldown > 0 else ""
+        debug_text = f"Detected: {detected_seal} | Total Hands: {len(hands_info)} | Mirror: {mirror_status}{cooldown_status}"
+        cv2.putText(img, debug_text, (img.shape[1]-550, img.shape[0]-40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
 
         # Buffer seal detection
@@ -83,6 +85,11 @@ def main():
             
         confirmed_seal = last_detected_seal if seal_hold_frames >= REQUIRED_HOLD else None
         
+        # Kelola cooldown
+        if seal_cooldown > 0:
+            seal_cooldown -= 1
+            confirmed_seal = None # Abaikan input selama cooldown
+        
         # Handle Keyboard Input
         key_code = cv2.waitKey(1) & 0xFF
         key_char = chr(key_code)
@@ -93,6 +100,7 @@ def main():
             # Ensure audio stops if switching
             effects.stop_audio()
             active_jutsu = None
+            seal_cooldown = 0
             print(f"Selected Jutsu: {current_jutsu['name']}")
         elif key_char == 'c':
             cap.release()
@@ -112,6 +120,7 @@ def main():
             
             if confirmed_seal == target_seal:
                 jutsu_step += 1
+                seal_cooldown = 30 # Jeda 1 detik (asumsi 30fps)
                 print(f"Seal matched: {target_seal}! Next step: {jutsu_step}")
                 if jutsu_step >= len(current_jutsu['sequence']):
                     active_jutsu = current_jutsu['name']
